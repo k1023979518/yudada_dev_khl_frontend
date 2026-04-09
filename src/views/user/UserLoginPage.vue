@@ -11,11 +11,8 @@
       <a-form-item field="userAccount" label="账号">
         <a-input v-model="form.userAccount" placeholder="请输入账号" />
       </a-form-item>
-      <a-form-item field="userPassword" tooltip="密码不小于 8 位" label="密码">
-        <a-input-password
-          v-model="form.userPassword"
-          placeholder="请输入密码"
-        />
+      <a-form-item field="userPassword" tooltip="密码不少于 8 位" label="密码">
+        <a-input-password v-model="form.userPassword" placeholder="请输入密码" />
       </a-form-item>
       <a-form-item>
         <div
@@ -42,30 +39,30 @@ import API from "@/api";
 import { userLoginUsingPost } from "@/api/userController";
 import { useLoginUserStore } from "@/store/userStore";
 import message from "@arco-design/web-vue/es/message";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 
 const loginUserStore = useLoginUserStore();
 const router = useRouter();
+const route = useRoute();
 
 const form = reactive({
   userAccount: "",
   userPassword: "",
 } as API.UserLoginRequest);
 
-/**
- * 提交
- */
 const handleSubmit = async () => {
   const res = await userLoginUsingPost(form);
   if (res.data.code === 0) {
     await loginUserStore.fetchLoginUser();
     message.success("登录成功");
+    const redirect =
+      typeof route.query.redirect === "string" ? route.query.redirect : "/";
     router.push({
-      path: "/",
+      path: redirect,
       replace: true,
     });
   } else {
-    message.error("登录失败，" + res.data.message);
+    message.error("登录失败：" + res.data.message);
   }
 };
 </script>
