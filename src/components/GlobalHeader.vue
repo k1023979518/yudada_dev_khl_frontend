@@ -29,6 +29,16 @@
         <a-button type="primary" href="/user/login">登录</a-button>
       </div>
     </a-col>
+    <a-col flex="100px">
+      <div v-if="loginUserStore.loginUser.id">
+        <a-button type="primary" status="danger" @click="handleLogout">
+          退出登录
+        </a-button>
+      </div>
+      <div v-else>
+        <a-button type="primary" href="/user/login">登录</a-button>
+      </div>
+    </a-col>
   </a-row>
 </template>
 
@@ -38,6 +48,7 @@ import { useRouter } from "vue-router";
 import { ref } from "vue";
 import { useLoginUserStore } from "@/store/userStore";
 import checkAccess from "@/access/checkAccess";
+import message from "@arco-design/web-vue/es/message";
 
 const loginUserStore = useLoginUserStore();
 
@@ -67,6 +78,17 @@ const doMenuClick = (key: string) => {
   router.push({
     path: key,
   });
+};
+
+// 处理退出登录
+const handleLogout = async () => {
+  try {
+    await loginUserStore.logout();
+    message.success("退出登录成功");
+    router.push("/user/login");
+  } catch (error) {
+    message.error("退出登录失败，请重试");
+  }
 };
 </script>
 
