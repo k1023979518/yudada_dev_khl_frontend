@@ -37,5 +37,13 @@ export const useLoginUserStore = defineStore("loginUser", () => {
     }
   }
 
-  return { loginUser, setLoginUser, fetchLoginUser };
+  async function logout() {
+    // 1. 清除本地存储的用户信息
+    localStorage.removeItem("loginUser");
+
+    // 2. 重置 Store 中的状态为初始值
+    loginUser.value = { userName: "not login" };
+  }
+
+  return { loginUser, setLoginUser, fetchLoginUser, logout };
 });
