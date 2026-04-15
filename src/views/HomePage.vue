@@ -7,6 +7,8 @@
         button-text="搜索"
         size="large"
         search-button
+        v-model="searchText"
+        @search="doSearch"
       />
     </div>
     <a-list
@@ -47,6 +49,7 @@ const searchParams = ref<API.AppQueryRequest>({
 });
 const dataList = ref<API.AppVO[]>([]);
 const total = ref<number>(0);
+const searchText = ref("");
 
 /**
  * 加载数据
@@ -73,6 +76,13 @@ const onPageChange = (page: number) => {
   searchParams.value = {
     ...searchParams.value,
     current: page,
+  };
+};
+
+const doSearch = () => {
+  searchParams.value = {
+    ...initSearchParams,
+    searchText: searchText.value,
   };
 };
 
