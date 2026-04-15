@@ -124,39 +124,78 @@ const handleSubmit = async () => {
 };
 
 /**
- * 提交（实时生成）
+ * 使用 fetch + ReadableStream 实现 SSE
  */
 const handleSSESubmit = async () => {
   if (!props.appId) {
     return;
   }
   sseSubmitting.value = true;
-  // 创建 SSE 请求
-  const eventSource = new EventSource(
-    // todo 手动填写完整的后端地址
+  let closed = false;
+
+  const url =
     "http://localhost:8101/api/question/ai_generate/sse" +
-      `?appId=${props.appId}&optionNumber=${form.optionNumber}&questionNumber=${form.questionNumber}`
-  );
-  let first = true;
-  // 接收消息
-  eventSource.onmessage = function (event) {
-    if (first) {
-      props.onSSEStart?.(event);
-      handleCancel();
-      first = !first;
+    `?appId=${props.appId}&optionNumber=${form.optionNumber}&questionNumber=${form.questionNumber}`;
+
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      credentials: "include", // 携带 cookie，实现登录凭证传递
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
-    props.onSSESuccess?.(JSON.parse(event.data));
-  };
-  // 报错或连接关闭时触发
-  eventSource.onerror = function (event) {
-    if (event.eventPhase === EventSource.CLOSED) {
-      console.log("关闭连接");
-      props.onSSEClose?.(event);
-      eventSource.close();
-    } else {
-      eventSource.close();
+
+    // 关闭抽屉
+    handleCancel();
+    props.onSSEStart?.(null);
+
+    const reader = response.body?.getReader();
+    if (!reader) {
+      throw new Error("无法获取响应流");
     }
-  };
-  sseSubmitting.value = false;
+
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (reader) {
+      const { done, value } = await reader.read();
+      if (done || closed) break;
+
+      // 流式解码，避免中文乱码
+      buffer += decoder.decode(value, { stream: true });
+
+      // 按行分割处理
+      const lines = buffer.split("\n");
+      // 保留最后一行（可能是不完整的）
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        // SSE 格式: "data: xxx"
+        if (trimmed.startsWith("data:")) {
+          const data = trimmed.slice(5).trim();
+          // 忽略空数据和结束标记 [DONE]
+          if (data && data !== "[DONE]") {
+            try {
+              props.onSSESuccess?.(JSON.parse(data));
+            } catch (e) {
+              console.error("解析 SSE 数据失败:", e);
+            }
+          }
+        }
+      }
+    }
+
+    props.onSSEClose?.(null);
+  } catch (error) {
+    console.error("SSE 连接错误:", error);
+    if (!closed) {
+      props.onSSEClose?.(error);
+    }
+  } finally {
+    sseSubmitting.value = false;
+  }
 };
 </script>
